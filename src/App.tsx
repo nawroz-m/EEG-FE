@@ -43,51 +43,54 @@ const MODELS = [
     key: "svm_lin",
     label: "SVM Linear",
     description: "kernel=linear, C=1.0, OvO",
+    paramGrid: { C: [0.1, 1, 10] },
+    bestParams: { C: 1 },
   },
-  { key: "svm_rbf", label: "SVM RBF", description: "kernel=rbf, C=1.0, OvO" },
-  { key: "tree", label: "Decision Tree", description: "gini, max_depth=20" },
-  { key: "knn", label: "k-NN", description: "k=5, Minkowski p=2" },
+  {
+    key: "svm_rbf",
+    label: "SVM RBF",
+    description: "kernel=rbf, C=1.0, OvO",
+    paramGrid: { C: [0.1, 1, 10], gamma: [1, 0.1, 0.01] },
+    bestParams: { C: 10, gamma: 0.01 },
+  },
+  {
+    key: "tree",
+    label: "Decision Tree",
+    description: "gini, max_depth=20",
+    paramGrid: { max_depth: [5, 10, 20] },
+    bestParams: { max_depth: 20 },
+  },
+  {
+    key: "knn",
+    label: "k-NN",
+    description: "k=5, Minkowski p=2",
+    paramGrid: { n_neighbors: [3, 5, 7] },
+    bestParams: { n_neighbors: 5 },
+  },
+];
+const TRAINING_METHODS = [
+  {
+    key: "norm",
+    label: "Standard classifier",
+    description: "default hyperparams",
+  },
+  {
+    key: "grid",
+    label: "Grid Search CV",
+    description: "5-fold, exhaustive param grid",
+    badge: "recommended",
+  },
 ];
 
-const DUMMY_RESPONSE = {
-  y_pred: [5, 4, 3, 2, 1],
-  prob: [
-    {
-      "1": 0.2041686484099359,
-      "2": 0.10711166756127753,
-      "3": 0.061419571475947086,
-      "4": 0.2828321355186476,
-      "5": 0.34446797703419196,
-    },
-    {
-      "1": 0.21736260184085485,
-      "2": 0.1399482807416206,
-      "3": 0.08911703335113257,
-      "4": 0.35824995549947636,
-      "5": 0.19532212856691555,
-    },
-    {
-      "1": 0.17100272354862328,
-      "2": 0.09126398431952276,
-      "3": 0.4429822913680627,
-      "4": 0.1498827982862392,
-      "5": 0.14486820247755183,
-    },
-    {
-      "1": 0.1969885208162514,
-      "2": 0.42603304388415014,
-      "3": 0.08389731919570678,
-      "4": 0.16336228141947734,
-      "5": 0.12971883468441395,
-    },
-    {
-      "1": 0.42410123304660113,
-      "2": 0.31958652490588235,
-      "3": 0.060026560080898385,
-      "4": 0.08465630597396821,
-      "5": 0.11162937599265019,
-    },
-  ],
+type DUMMY_RESPONSE = {
+  y_pred: number[];
+  prob: {
+    "1": number;
+    "2": number;
+    "3": number;
+    "4": number;
+    "5": number;
+  }[];
 };
 
 function ConfidenceBar({
@@ -187,25 +190,46 @@ function StatCard({
   );
 }
 
+const api_url = "https://nawroz-m-eeg.hf.space/pred";
+
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [selectedModel, setSelectedModel] = useState("svm_lin");
-  const [response, setResponse] = useState<typeof DUMMY_RESPONSE | null>(null);
+  const [selectedTraining, setSelectedTraining] = useState("norm");
+  const [response, setResponse] = useState<DUMMY_RESPONSE | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setLoading(true);
     setResponse(null);
-    setTimeout(() => {
-      setResponse(DUMMY_RESPONSE);
-      setLoading(false);
-    }, 1200);
-  };
+    try {
+      // Check if a file was selected
+      if (!file) {
+        alert("Please select a file to upload");
+        return;
+      }
+      //Create FormData and append the file
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("model_name", selectedModel); // svm_lin
+      formData.append("training", selectedTraining); // norm
 
+      const api_response = await fetch(api_url, {
+        method: "POST",
+        body: formData,
+      });
+      const api_responseData = await api_response.json(); // Parse the JSON response
+      setResponse(api_responseData?.result);
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+    }
+  };
   const probsAsArrays = response?.prob.map((row) =>
     DATASET_COMPOSITION.map(
       (d) => row[String(d.label) as keyof typeof row] as number,
@@ -395,11 +419,115 @@ export default function App() {
               marginBottom: 14,
             }}
           >
-            Model
+            Training method
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              marginBottom: 20,
+            }}
+          >
+            {TRAINING_METHODS.map((t) => {
+              const active = selectedTraining === t.key;
+              return (
+                <button
+                  key={t.key}
+                  className="model-btn"
+                  onClick={() => setSelectedTraining(t.key)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    background: active ? "#1e3a5f" : "#0f172a",
+                    border: `1.5px solid ${active ? "#3b82f6" : "#1e293b"}`,
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                    width: "100%",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      border: `1.5px solid ${active ? "#3b82f6" : "#334155"}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "border-color 0.15s",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        background: active ? "#3b82f6" : "transparent",
+                        transition: "background 0.15s",
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: active ? "#93c5fd" : "#94a3b8",
+                      }}
+                    >
+                      {t.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: active ? "#60a5fa80" : "#334155",
+                        marginTop: 2,
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {t.description}
+                    </div>
+                  </div>
+                  {t.badge && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        background: "#1e3a5f",
+                        color: "#60a5fa",
+                        border: "1px solid #3b82f620",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div
+            style={{
+              fontSize: 10,
+              color: "#475569",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              marginBottom: 12,
+            }}
+          >
+            Algorithm
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {MODELS.map((m) => {
               const active = selectedModel === m.key;
+              const isGSCV = selectedTraining === "grid";
               return (
                 <button
                   key={m.key}
@@ -435,6 +563,112 @@ export default function App() {
                   >
                     {m.description}
                   </div>
+                  {isGSCV && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        paddingTop: 8,
+                        borderTop: `1px solid ${active ? "#3b82f620" : "#1e293b"}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "#475569",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          marginBottom: 5,
+                        }}
+                      >
+                        Param grid
+                      </div>
+                      {Object.entries(m.paramGrid).map(([param, values]) => {
+                        const best =
+                          m.bestParams[param as keyof typeof m.bestParams];
+                        return (
+                          <div
+                            key={param}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                              marginBottom: 4,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: active ? "#60a5fa" : "#475569",
+                                fontFamily: "monospace",
+                                minWidth: 60,
+                              }}
+                            >
+                              {param}
+                            </span>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 3,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              {(values as number[]).map((v) => (
+                                <span
+                                  key={v}
+                                  style={{
+                                    fontSize: 10,
+                                    fontFamily: "monospace",
+                                    padding: "1px 5px",
+                                    borderRadius: 4,
+                                    background:
+                                      v === best
+                                        ? active
+                                          ? "#3b82f630"
+                                          : "#1e3a5f"
+                                        : "transparent",
+                                    color:
+                                      v === best
+                                        ? active
+                                          ? "#93c5fd"
+                                          : "#3b82f6"
+                                        : "#334155",
+                                    border: `1px solid ${v === best ? (active ? "#3b82f660" : "#3b82f640") : "#1e293b"}`,
+                                  }}
+                                >
+                                  {v}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: 9,
+                          color: "#475569",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        Best params{" "}
+                        <span
+                          style={{
+                            color: active ? "#93c5fd" : "#3b82f6",
+                            textTransform: "none",
+                            letterSpacing: 0,
+                            fontFamily: "monospace",
+                            fontSize: 10,
+                          }}
+                        >
+                          {Object.entries(m.bestParams)
+                            .map(([k, v]) => `${k}=${v}`)
+                            .join(", ")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </button>
               );
             })}
