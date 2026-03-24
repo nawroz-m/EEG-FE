@@ -205,7 +205,7 @@ export default function App() {
   };
   const handleUseDemo = async () => {
     try {
-      const response = await fetch("/public/EEG-test-data.xlsx");
+      const response = await fetch("/EEG-test-data.xlsx");
       const blob = await response.blob();
 
       const demoFile = new File([blob], "EEG-test-data.xlsx", {
@@ -739,7 +739,7 @@ export default function App() {
             </button>
 
             <a
-              href="/public/EEG-test-data.xlsx"
+              href="/EEG-test-data.xlsx"
               download
               style={{
                 background: "#0f172a",
