@@ -198,9 +198,25 @@ export default function App() {
   const [selectedTraining, setSelectedTraining] = useState("norm");
   const [response, setResponse] = useState<DUMMY_RESPONSE | null>(null);
   const [loading, setLoading] = useState(false);
+  const [useDemo, setUseDemo] = useState(false);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
+  };
+  const handleUseDemo = async () => {
+    try {
+      const response = await fetch("/public/EEG-test-data.xlsx");
+      const blob = await response.blob();
+
+      const demoFile = new File([blob], "EEG-test-data.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      setFile(demoFile);
+      setUseDemo(true);
+    } catch (err) {
+      console.error("Failed to load demo file", err);
+    }
   };
 
   const handleSubmit = async () => {
@@ -696,6 +712,50 @@ export default function App() {
           >
             Input File
           </div>
+
+          {/* DEMO OPTIONS */}
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              marginBottom: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              // onClick={() => setUseDemo(true)}
+              onClick={handleUseDemo}
+              style={{
+                background: useDemo ? "#16a34a" : "#0f172a",
+                color: useDemo ? "#fff" : "#94a3b8",
+                border: "1px solid #1e293b",
+                borderRadius: 8,
+                padding: "8px 14px",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Use Demo File
+            </button>
+
+            <a
+              href="/public/EEG-test-data.xlsx"
+              download
+              style={{
+                background: "#0f172a",
+                color: "#94a3b8",
+                border: "1px solid #1e293b",
+                borderRadius: 8,
+                padding: "8px 14px",
+                fontSize: 12,
+                textDecoration: "none",
+              }}
+            >
+              Download Demo
+            </a>
+          </div>
+
+          {/* FILE INPUT */}
           <div
             style={{
               display: "flex",
@@ -707,7 +767,10 @@ export default function App() {
             <input
               type="file"
               accept=".xlsx,.xls"
-              onChange={handleUpload}
+              onChange={(e) => {
+                setUseDemo(false); // disable demo if user uploads
+                handleUpload(e);
+              }}
               style={{
                 flex: 1,
                 minWidth: 200,
@@ -717,10 +780,11 @@ export default function App() {
                 padding: "8px 12px",
               }}
             />
+
             <button
               className="run-btn"
               onClick={handleSubmit}
-              disabled={!file || loading}
+              disabled={(!file && !useDemo) || loading}
               style={{
                 background: "#1d4ed8",
                 color: "#fff",
@@ -734,27 +798,21 @@ export default function App() {
                 alignItems: "center",
                 gap: 8,
                 whiteSpace: "nowrap",
-                transition: "background 0.15s",
               }}
             >
-              {loading && (
-                <div
-                  style={{
-                    width: 13,
-                    height: 13,
-                    border: "2px solid #93c5fd",
-                    borderTopColor: "transparent",
-                    borderRadius: "50%",
-                    animation: "spin 0.7s linear infinite",
-                  }}
-                />
-              )}
               {loading ? "Running…" : "Run Classification"}
             </button>
           </div>
-          {file && !loading && (
+
+          {/* INFO */}
+          {!loading && (
             <div style={{ marginTop: 10, fontSize: 11, color: "#475569" }}>
-              {file.name} · {(file.size / 1024).toFixed(1)} KB · Model:{" "}
+              {useDemo
+                ? "Using demo dataset"
+                : file
+                  ? `${file.name} · ${(file.size / 1024).toFixed(1)} KB`
+                  : "No file selected"}
+              {" · Model: "}
               {MODELS.find((m) => m.key === selectedModel)?.label}
             </div>
           )}
