@@ -246,7 +246,7 @@ export default function App() {
       setLoading(false);
     }
   };
-  const probsAsArrays = response?.prob.map((row) =>
+  const probsAsArrays = response?.prob?.map((row) =>
     DATASET_COMPOSITION.map(
       (d) => row[String(d.label) as keyof typeof row] as number,
     ),
@@ -819,7 +819,7 @@ export default function App() {
         </div>
 
         {/* Results */}
-        {response && probsAsArrays && (
+        {response && (
           <div style={{ animation: "fadeIn 0.4s ease" }}>
             {/* Summary */}
             <div
@@ -842,7 +842,7 @@ export default function App() {
               />
               <StatCard
                 label="Avg Confidence"
-                value={`${(avgConfidence * 100).toFixed(1)}%`}
+                value={`${(avgConfidence || 0 * 100).toFixed(1)}%`}
                 sub="predicted class prob."
               />
               <StatCard
@@ -851,7 +851,6 @@ export default function App() {
                 sub={dominantClass?.state}
               />
             </div>
-
             {/* Distribution */}
             <div
               style={{
@@ -922,182 +921,185 @@ export default function App() {
             </div>
 
             {/* Per-signal */}
-            <div
-              style={{
-                background: "#0a0f1e",
-                border: "1px solid #1e293b",
-                borderRadius: 14,
-                padding: "18px 22px",
-              }}
-            >
+            {response && avgConfidence ? (
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 16,
+                  background: "#0a0f1e",
+                  border: "1px solid #1e293b",
+                  borderRadius: 14,
+                  padding: "18px 22px",
                 }}
               >
                 <div
                   style={{
-                    fontSize: 10,
-                    color: "#475569",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 16,
                   }}
                 >
-                  Per-signal Results
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "#475569",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    Per-signal Results
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#334155",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {MODELS.find((m) => m.key === selectedModel)?.label}
+                  </span>
                 </div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "#334155",
-                    fontFamily: "monospace",
-                  }}
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
                 >
-                  {MODELS.find((m) => m.key === selectedModel)?.label}
-                </span>
-              </div>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
-              >
-                {response.y_pred.map((pred, idx) => {
-                  const meta = DATASET_COMPOSITION.find(
-                    (d) => d.label === pred,
-                  )!;
-                  const probs = probsAsArrays[idx];
-                  const confidence = probs[pred - 1];
-                  return (
-                    <div
-                      key={idx}
-                      className="signal-card"
-                      style={{
-                        background: "#080d1a",
-                        border: "1px solid #1e293b",
-                        borderRadius: 10,
-                        padding: "14px 16px",
-                        transition: "all 0.15s",
-                      }}
-                    >
+                  {response.y_pred.map((pred, idx) => {
+                    const meta = DATASET_COMPOSITION.find(
+                      (d) => d.label === pred,
+                    )!;
+                    const probs = probsAsArrays?.[idx];
+                    const confidence = probs?.[pred || 1 - 1];
+                    return (
                       <div
+                        key={idx}
+                        className="signal-card"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          marginBottom: 12,
-                          flexWrap: "wrap",
+                          background: "#080d1a",
+                          border: "1px solid #1e293b",
+                          borderRadius: 10,
+                          padding: "14px 16px",
+                          transition: "all 0.15s",
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: "#334155",
-                            fontFamily: "monospace",
-                            minWidth: 56,
-                          }}
-                        >
-                          Signal {String(idx + 1).padStart(2, "0")}
-                        </span>
                         <div
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 8,
+                            gap: 12,
+                            marginBottom: 12,
+                            flexWrap: "wrap",
                           }}
                         >
-                          <div
+                          <span
                             style={{
-                              width: 26,
-                              height: 26,
-                              borderRadius: 7,
-                              background: meta.color + "25",
-                              border: `1.5px solid ${meta.color}60`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color: meta.color,
-                              }}
-                            >
-                              {meta.set}
-                            </span>
-                          </div>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#e2e8f0",
-                              }}
-                            >
-                              {meta.state}
-                            </div>
-                            <div style={{ fontSize: 10, color: "#475569" }}>
-                              {meta.electrode}
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                          <div
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: meta.color,
+                              fontSize: 10,
+                              color: "#334155",
                               fontFamily: "monospace",
+                              minWidth: 56,
                             }}
                           >
-                            {(confidence * 100).toFixed(1)}%
-                          </div>
-                          <div style={{ fontSize: 10, color: "#475569" }}>
-                            confidence
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 4,
-                        }}
-                      >
-                        {DATASET_COMPOSITION.map((cls, i) => (
+                            Signal {String(idx + 1).padStart(2, "0")}
+                          </span>
                           <div
-                            key={i}
                             style={{
                               display: "flex",
                               alignItems: "center",
                               gap: 8,
                             }}
                           >
-                            <span
+                            <div
                               style={{
-                                fontSize: 10,
-                                color: i + 1 === pred ? cls.color : "#334155",
-                                minWidth: 14,
-                                fontWeight: 600,
+                                width: 26,
+                                height: 26,
+                                borderRadius: 7,
+                                background: meta.color + "25",
+                                border: `1.5px solid ${meta.color}60`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
                               }}
                             >
-                              {cls.set}
-                            </span>
-                            <ConfidenceBar
-                              value={probs[i]}
-                              color={cls.color}
-                              isTop={i + 1 === pred}
-                            />
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: meta.color,
+                                }}
+                              >
+                                {meta.set}
+                              </span>
+                            </div>
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "#e2e8f0",
+                                }}
+                              >
+                                {meta.state}
+                              </div>
+                              <div style={{ fontSize: 10, color: "#475569" }}>
+                                {meta.electrode}
+                              </div>
+                            </div>
                           </div>
-                        ))}
+                          <div
+                            style={{ marginLeft: "auto", textAlign: "right" }}
+                          >
+                            <div
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: meta.color,
+                                fontFamily: "monospace",
+                              }}
+                            >
+                              {(confidence || 0 * 100).toFixed(1)}%
+                            </div>
+                            <div style={{ fontSize: 10, color: "#475569" }}>
+                              confidence
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                          }}
+                        >
+                          {DATASET_COMPOSITION.map((cls, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  color: i + 1 === pred ? cls.color : "#334155",
+                                  minWidth: 14,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {cls.set}
+                              </span>
+                              <ConfidenceBar
+                                value={probs?.[i] || 0}
+                                color={cls.color}
+                                isTop={i + 1 === pred}
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
+            ) : null}
             <div
               style={{
                 marginTop: 14,
