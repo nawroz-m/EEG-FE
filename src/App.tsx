@@ -966,7 +966,8 @@ export default function App() {
                       (d) => d.label === pred,
                     )!;
                     const probs = probsAsArrays?.[idx];
-                    const confidence = probs?.[pred || 1 - 1];
+                    const confidence = probs?.[pred - 1];
+
                     return (
                       <div
                         key={idx}
